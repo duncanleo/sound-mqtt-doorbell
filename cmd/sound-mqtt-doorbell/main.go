@@ -105,11 +105,36 @@ func main() {
 			return
 		}
 		log.Printf("Playing sound file '%s'\n", soundFile)
-		cmd := exec.Command("ffplay", "-nodisp", "-autoexit", soundFile)
-		cmd.Stdout = os.Stdout
+
+		var aplayArgs = []string{
+			"-f",
+			"cd",
+		}
+
+		aplay := exec.Command("aplay", aplayArgs...)
+		aplay.Stdout = os.Stdout
+		aplay.Stderr = os.Stderr
+
+		var ffmpegArgs = []string{
+			"-i",
+			soundFile,
+			"-f",
+			"s16le",
+			"-c:a",
+			"pcm_s16le",
+			"-r",
+			"44100",
+			"-",
+		}
+		cmd := exec.Command("ffmpeg", ffmpegArgs...)
+		aplay.Stdin, _ = cmd.StdoutPipe()
 		cmd.Stderr = os.Stderr
 		isPlaying = true
+
+		aplay.Start()
 		cmd.Run()
+		aplay.Wait()
+
 		isPlaying = false
 	}
 }
