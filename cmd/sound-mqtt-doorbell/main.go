@@ -91,18 +91,20 @@ func main() {
 	client.Subscribe(*topic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		log.Printf("[%s]: %s\n", *topic, string(msg.Payload()))
 
-		eventChan <- "press"
+		eventChan <- string(msg.Payload())
 	})
 
-	for range eventChan {
-		if isPlaying {
-			return
+	for event := range eventChan {
+		if isPlaying || event != "ON" {
+			time.Sleep(1 * time.Second)
+			continue
 		}
 
 		soundFile, err := pickSoundFile(*soundPath)
 		if err != nil {
 			log.Println(err)
-			return
+			time.Sleep(1 * time.Second)
+			continue
 		}
 		log.Printf("Playing sound file '%s'\n", soundFile)
 
