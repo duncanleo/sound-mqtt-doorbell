@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"strings"
 	"syscall"
 	"time"
 
@@ -51,7 +52,16 @@ func pickSoundFile(soundPath string) (string, error) {
 		if err != nil {
 			return chosenPath, err
 		}
-		chosenPath = path.Join(soundPath, files[rand.Intn(len(files))].Name())
+
+		// Filter out irrelevant files
+		var relevantFiles = []os.FileInfo{}
+		for _, file := range files {
+			if !strings.HasPrefix(file.Name(), ".") {
+				relevantFiles = append(relevantFiles, file)
+			}
+		}
+
+		chosenPath = path.Join(soundPath, relevantFiles[rand.Intn(len(relevantFiles))].Name())
 	}
 	return chosenPath, nil
 }
