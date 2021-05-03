@@ -134,6 +134,8 @@ func main() {
 			"s16le",
 			"-c:a",
 			"pcm_s16le",
+			"-af",
+			"dynaudnorm=f=100:g=15:n=1:p=1",
 			"-r",
 			"44100",
 			"-",
