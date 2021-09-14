@@ -18,6 +18,10 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+var (
+	playedFiles = []string{}
+)
+
 func connect(clientID string, uri *url.URL) (mqtt.Client, error) {
 	var opts = mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s", uri.Host))
@@ -34,13 +38,23 @@ func connect(clientID string, uri *url.URL) (mqtt.Client, error) {
 	return client, token.Error()
 }
 
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
 // pickSoundFile pick a sound file from a path that is possibly either a file or folder.
 // if it is a folder, it will randomly pick a file within
 func pickSoundFile(soundPath string) (string, error) {
 	if len(soundPath) == 0 {
 		return "", fmt.Errorf("File/folder path is empty")
 	}
-	var chosenPath = soundPath
+	var chosenPath = ""
 	pathInfo, err := os.Stat(soundPath)
 	if err != nil {
 		return chosenPath, err
@@ -61,7 +75,21 @@ func pickSoundFile(soundPath string) (string, error) {
 			}
 		}
 
-		chosenPath = path.Join(soundPath, relevantFiles[rand.Intn(len(relevantFiles))].Name())
+		if len(playedFiles) >= len(relevantFiles) {
+			playedFiles = []string{}
+		}
+
+		for {
+			chosenPath = path.Join(soundPath, relevantFiles[rand.Intn(len(relevantFiles))].Name())
+
+			if !contains(playedFiles, chosenPath) {
+				break
+			}
+		}
+
+		playedFiles = append(playedFiles, chosenPath)
+	} else {
+		return chosenPath, fmt.Errorf("Path '%s' is not a directory", soundPath)
 	}
 	return chosenPath, nil
 }
@@ -116,6 +144,7 @@ func main() {
 			time.Sleep(1 * time.Second)
 			continue
 		}
+
 		log.Printf("Playing sound file '%s'\n", soundFile)
 
 		var aplayArgs = []string{
