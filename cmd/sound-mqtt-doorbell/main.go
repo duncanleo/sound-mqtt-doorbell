@@ -94,8 +94,6 @@ func pickSoundFile(soundPath string) (string, error) {
 	return chosenPath, nil
 }
 
-var isPlaying = false
-
 func main() {
 	var brokerURI = flag.String("brokerURI", "mqtt://127.0.0.1:1883", "URI of the MQTT broker")
 	var clientID = flag.String("clientID", "sound-mqtt-doorbell", "client ID for MQTT")
@@ -124,16 +122,28 @@ func main() {
 		os.Exit(1)
 	}()
 
+	var lastMessageTime = time.Now()
+
 	var eventChan = make(chan string, 0)
 
 	client.Subscribe(*topic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		log.Printf("[%s]: %s\n", *topic, string(msg.Payload()))
 
+		now := time.Now()
+		var lastMessageTimeDiff = now.Sub(lastMessageTime).Milliseconds()
+		lastMessageTime = now
+
+		if lastMessageTimeDiff < 1000 {
+			lastMessageTime = now
+			log.Printf("Last message occurred %dms ago, ignoring.\n", lastMessageTimeDiff)
+			return
+		}
+
 		eventChan <- string(msg.Payload())
 	})
 
 	for event := range eventChan {
-		if isPlaying || event != "ON" {
+		if event != "ON" {
 			time.Sleep(1 * time.Second)
 			continue
 		}
@@ -172,12 +182,9 @@ func main() {
 		cmd := exec.Command("ffmpeg", ffmpegArgs...)
 		aplay.Stdin, _ = cmd.StdoutPipe()
 		cmd.Stderr = os.Stderr
-		isPlaying = true
 
 		aplay.Start()
 		cmd.Run()
 		aplay.Wait()
-
-		isPlaying = false
 	}
 }
